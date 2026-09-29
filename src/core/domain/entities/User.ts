@@ -7,6 +7,7 @@ export interface User {
   color: string;
   email?: string;
   avatarUrl?: string;
+  role?: "owner" | "member";
 }
 
 export interface Interaction {

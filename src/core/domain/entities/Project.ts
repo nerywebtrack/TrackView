@@ -11,6 +11,7 @@ export interface Project {
   subtitle: string;
   visibility: ProjectVisibility;
   members: User[];
+  manager?: User;
   extraMembers: number;
   columns: BoardColumn[];
 }

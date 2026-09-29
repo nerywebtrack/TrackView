@@ -1,5 +1,6 @@
-import type { Task } from "@/core/domain/entities/Task";
+import { assigneesOf, type Task } from "@/core/domain/entities/Task";
 import Avatar from "@/presentation/components/ui/Avatar";
+import AvatarGroup from "@/presentation/components/ui/AvatarGroup";
 import {
   CalendarIcon,
   MoreIcon,
@@ -17,6 +18,7 @@ type TaskCardProps = {
 };
 
 export default function TaskCard({ task, onAction, onDragStart, onDragEnd }: TaskCardProps) {
+  const assignees = assigneesOf(task);
   return (
     <article
       draggable
@@ -45,10 +47,17 @@ export default function TaskCard({ task, onAction, onDragStart, onDragEnd }: Tas
         </h3>
 
         <div className="mt-3 flex items-center gap-4 text-xs text-slate-500">
-          <span className="flex items-center gap-1.5">
-            <Avatar user={task.assignee} size={20} />
-            {task.assignee.name}
-          </span>
+          {assignees.length > 1 ? (
+            <span className="flex items-center gap-1.5" title={assignees.map((user) => user.name).join(", ")}>
+              <AvatarGroup users={assignees.slice(0, 3)} extra={assignees.length - 3} size={20} />
+              {assignees.length} people
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <Avatar user={task.assignee} size={20} />
+              {task.assignee.name}
+            </span>
+          )}
           <span className="flex items-center gap-1.5">
             <CalendarIcon width={14} height={14} className="text-slate-400" />
             {task.dueDate}

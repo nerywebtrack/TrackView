@@ -230,6 +230,40 @@ export function PencilIcon(props: IconProps) {
   );
 }
 
+export function MoreVerticalIcon(props: IconProps) {
+  return (
+    <Base strokeWidth={2.4} {...props}>
+      <path d="M12 5h.01M12 12h.01M12 19h.01" />
+    </Base>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13" />
+    </Base>
+  );
+}
+
+export function ReplyIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M9.5 5 4 10.5 9.5 16" />
+      <path d="M4 10.5h9a7 7 0 0 1 7 7V19" />
+    </Base>
+  );
+}
+
+export function CheckCircleIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="11" fill="currentColor" />
+      <path d="m7 12.4 3.2 3.1L17 8.7" fill="none" stroke="#fff" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function MegaphoneIcon(props: IconProps) {
   return (
     <Base {...props}>
