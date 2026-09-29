@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Attachment } from "@/core/domain/entities/Attachment";
-import type { BoardColumn } from "@/core/domain/entities/BoardColumn";
+import type { BoardColumn, ColumnKind } from "@/core/domain/entities/BoardColumn";
 import type { Project, ProjectId, ProjectVisibility } from "@/core/domain/entities/Project";
 import type { Priority, Task } from "@/core/domain/entities/Task";
 import type { User } from "@/core/domain/entities/User";
@@ -12,7 +12,7 @@ const SIGNED_URL_TTL_SECONDS = 60 * 60;
 const PROFILE_FIELDS = "id,auth_user_id,display_name,initials,color,email,avatar_url";
 
 type ProjectRow = { id: string; workspace_id: string; name: string; subtitle: string; visibility: ProjectVisibility };
-type ColumnRow = { id: string; project_id: string; name: string; position: number };
+type ColumnRow = { id: string; project_id: string; name: string; position: number; kind: ColumnKind };
 export type ProfileRow = { id: string; auth_user_id?: string | null; display_name: string; initials: string; color: string; email?: string | null; avatar_url?: string | null };
 type TaskRow = { id: string; column_id: string; title: string; description: string; priority: Priority; assignee_id: string | null; start_date: string | null; due_date: string; files_count: number; tags: string[]; highlighted: boolean; position: number };
 type AttachmentRow = { id: string; task_id: string; kind: "file" | "link"; file_name: string; storage_path: string | null; url: string | null; content_type: string | null; size_bytes: number; created_at: string };
@@ -27,7 +27,7 @@ export class SupabaseProjectRepository implements ProjectRepository {
     const projectRow = projectData as ProjectRow;
 
     const [{ data: columnData, error: columnError }, team] = await Promise.all([
-      this.client.from("board_columns").select("id,project_id,name,position").eq("project_id", id).order("position"),
+      this.client.from("board_columns").select("id,project_id,name,position,kind").eq("project_id", id).order("position"),
       this.loadTeam(projectRow),
     ]);
     if (columnError) throw columnError;
@@ -55,7 +55,7 @@ export class SupabaseProjectRepository implements ProjectRepository {
       extraMembers: 0,
       columns: columns.map((column): BoardColumn => {
         const columnTasks = tasks.filter((task) => task.column_id === column.id).map((task) => mapTask(task, attachmentsByTask.get(task.id) ?? [], assigneesByTask.get(task.id) ?? []));
-        return { id: column.id, name: column.name, totalCount: columnTasks.length, tasks: columnTasks };
+        return { id: column.id, name: column.name, kind: column.kind, totalCount: columnTasks.length, tasks: columnTasks };
       }),
     };
   }

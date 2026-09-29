@@ -31,11 +31,13 @@ type SidebarProps = {
   activeItem: string;
   onCollapse: () => void;
   onNavigate: (item: string) => void;
+  isOwner: boolean;
   onLogout: () => void;
   onContacts: () => void;
 };
 
-export default function Sidebar({ workspace, members, managerId, currentUserId, collapsed, activeItem, onCollapse, onNavigate, onLogout, onContacts }: SidebarProps) {
+export default function Sidebar({ workspace, members, managerId, currentUserId, collapsed, activeItem, isOwner, onCollapse, onNavigate, onLogout, onContacts }: SidebarProps) {
+  const visibleItems = isOwner ? navItems : navItems.filter((item) => item.label === "Projects");
   return (
     <aside className={`hidden shrink-0 flex-col rounded-3xl bg-white p-4 shadow-sm transition-all md:flex ${collapsed ? "w-[76px]" : "w-[232px]"}`}>
       <div className="flex items-center justify-between">
@@ -62,7 +64,7 @@ export default function Sidebar({ workspace, members, managerId, currentUserId, 
       </div>
 
       <nav className="mt-6 flex flex-col gap-1">
-        {navItems.map(({ label, icon: Icon }) => (
+        {visibleItems.map(({ label, icon: Icon }) => (
           <button
             key={label}
             type="button"

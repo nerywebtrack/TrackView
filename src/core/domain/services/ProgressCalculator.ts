@@ -1,6 +1,5 @@
+import { columnKindOf } from "../entities/BoardColumn";
 import type { Project } from "../entities/Project";
-
-const DONE_COLUMN_NAME = "Done";
 
 export function calculateProgress(project: Project): number {
   const total = project.columns.reduce(
@@ -13,7 +12,7 @@ export function calculateProgress(project: Project): number {
   }
 
   const done = project.columns
-    .filter((column) => column.name === DONE_COLUMN_NAME)
+    .filter((column) => columnKindOf(column) === "done")
     .reduce((count, column) => count + column.totalCount, 0);
 
   return Math.round((done / total) * 100);

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Attachment } from "@/core/domain/entities/Attachment";
 import type { User } from "@/core/domain/entities/User";
+import { columnKindOf, type ColumnKind } from "@/core/domain/entities/BoardColumn";
 import type { Project, ProjectVisibility } from "@/core/domain/entities/Project";
 import { assigneesOf, type Priority, type Task } from "@/core/domain/entities/Task";
 import type { Workspace } from "@/core/domain/entities/Workspace";
@@ -103,7 +104,7 @@ export default function BoardWorkspace({ initialProject, workspace, currentUser,
 
   const progress = useMemo(() => {
     const total = project.columns.reduce((sum, column) => sum + column.totalCount, 0);
-    const done = project.columns.filter((column) => column.name.toLowerCase() === "done").reduce((sum, column) => sum + column.totalCount, 0);
+    const done = project.columns.filter((column) => columnKindOf(column) === "done").reduce((sum, column) => sum + column.totalCount, 0);
     return total ? Math.round((done / total) * 100) : 0;
   }, [project]);
 
@@ -136,6 +137,9 @@ export default function BoardWorkspace({ initialProject, workspace, currentUser,
   }, [project.members, currentUser]);
   const manager = project.manager ?? currentUser;
   const connected = usesSupabase && isAuthenticated;
+  // In memory mode there is no owner, so the local user gets full access.
+  const isOwner = manager.id === currentUser.id;
+  const currentSection = isOwner ? activeItem : "Projects";
 
   function cyclePriority() {
     const values: Array<typeof priorityFilter> = ["all", "high", "medium", "low"];
@@ -153,6 +157,7 @@ export default function BoardWorkspace({ initialProject, workspace, currentUser,
   }
 
   function navigate(item: string) {
+    if (!isOwner && item !== "Projects") return;
     setActiveItem(item);
     if (item !== "Projects" && item !== "Settings") setModal({ type: "info", title: item, message: `La sección ${item} está lista para conectarse a su propio módulo. El tablero de Projects permanece disponible.` });
   }
@@ -175,13 +180,18 @@ export default function BoardWorkspace({ initialProject, workspace, currentUser,
   function addColumnNamed(rawName: string) {
     const name = rawName.trim();
     if (!name) return;
-    setProject((current) => ({ ...current, columns: [...current.columns, { id: `column-${Date.now()}`, name, totalCount: 0, tasks: [] }] }));
+    setProject((current) => ({ ...current, columns: [...current.columns, { id: `column-${Date.now()}`, name, kind: "active", totalCount: 0, tasks: [] }] }));
     setToast(`Estado “${name}” creado`);
   }
 
   function renameColumn(columnId: string, name: string) {
     setProject((current) => ({ ...current, columns: current.columns.map((column) => column.id === columnId ? { ...column, name } : column) }));
     setToast(`Estado renombrado a “${name}”`);
+  }
+
+  function setColumnKind(columnId: string, kind: ColumnKind) {
+    setProject((current) => ({ ...current, columns: current.columns.map((column) => column.id === columnId ? { ...column, kind } : column) }));
+    setToast("Tipo de estado actualizado");
   }
 
   function moveColumn(columnId: string, direction: -1 | 1) {
@@ -368,7 +378,7 @@ export default function BoardWorkspace({ initialProject, workspace, currentUser,
 
   return (
     <div className="flex min-h-screen gap-4 bg-[#e6eafb] p-3 sm:p-4">
-      <Sidebar workspace={workspace} members={team} managerId={project.manager?.id} currentUserId={currentUser.id} collapsed={collapsed} activeItem={activeItem} onCollapse={() => setCollapsed((value) => !value)} onNavigate={navigate} onLogout={logout} onContacts={() => setModal({ type: "info", title: "Contactos", message: `${project.members.length + project.extraMembers} personas colaboran en este proyecto.` })} />
+      <Sidebar workspace={workspace} members={team} managerId={project.manager?.id} currentUserId={currentUser.id} collapsed={collapsed} activeItem={currentSection} isOwner={isOwner} onCollapse={() => setCollapsed((value) => !value)} onNavigate={navigate} onLogout={logout} onContacts={() => setModal({ type: "info", title: "Contactos", message: `${project.members.length + project.extraMembers} personas colaboran en este proyecto.` })} />
       <main className="flex min-w-0 flex-1 flex-col gap-5">
         <Topbar currentUser={currentUser} query={query} onQueryChange={setQuery} onAction={topbarAction} onLogout={logout} />
         {usesSupabase && !isAuthenticated && (
@@ -377,7 +387,7 @@ export default function BoardWorkspace({ initialProject, workspace, currentUser,
             <Link href="/login" className="rounded-full bg-amber-900 px-4 py-2 font-semibold text-white">Iniciar sesión</Link>
           </div>
         )}
-        {activeItem === "Settings" ? (
+        {currentSection === "Settings" ? (
           <ProjectSettings
             project={project}
             currentUser={currentUser}
@@ -385,6 +395,7 @@ export default function BoardWorkspace({ initialProject, workspace, currentUser,
             onBack={() => navigate("Projects")}
             onSaveGeneral={saveGeneral}
             onRenameColumn={renameColumn}
+            onChangeColumnKind={setColumnKind}
             onMoveColumn={moveColumn}
             onAddColumn={addColumnNamed}
             onDeleteColumn={deleteColumn}
@@ -393,7 +404,7 @@ export default function BoardWorkspace({ initialProject, workspace, currentUser,
           />
         ) : (
           <>
-          <ProjectHeader project={project} progress={progress} priorityFilter={priorityFilter} sortBy={sortBy} groupBy={groupBy} onPriorityFilter={cyclePriority} onSort={cycleSort} onGroup={cycleGroup} onAddColumn={() => setModal({ type: "add-column" })} onSubtitle={() => navigate("Settings")} />
+          <ProjectHeader project={project} progress={progress} priorityFilter={priorityFilter} sortBy={sortBy} groupBy={groupBy} onPriorityFilter={cyclePriority} onSort={cycleSort} onGroup={cycleGroup} onAddColumn={() => setModal({ type: "add-column" })} onSubtitle={isOwner ? () => navigate("Settings") : undefined} />
           {(query || priorityFilter !== "all") && <p className="-mb-2 text-sm text-slate-600">Mostrando {visibleColumns.reduce((sum, column) => sum + column.tasks.length, 0)} resultados <button type="button" className="ml-2 font-semibold text-indigo-600" onClick={() => { setQuery(""); setPriorityFilter("all"); }}>Limpiar</button></p>}
           <Board
             columns={visibleColumns}

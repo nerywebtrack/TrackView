@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Attachment } from "@/core/domain/entities/Attachment";
 import type { TaskComment } from "@/core/domain/entities/Comment";
 import { assigneesOf, type Priority, type Task } from "@/core/domain/entities/Task";
+import type { TaskActivity } from "@/core/domain/entities/TaskActivity";
 import type { User } from "@/core/domain/entities/User";
 import Avatar from "@/presentation/components/ui/Avatar";
 import {
@@ -19,7 +20,7 @@ import {
 } from "@/presentation/components/ui/Icons";
 import { AssigneePicker, Divider, EMOJIS, Menu, MenuItem, OutlineButton, StatusPicker, TabButton, TicketField, ToolButton, formatBytes, isImage, safeHostname } from "./ticketParts";
 
-type Tab = "comments" | "details" | "attachments";
+type Tab = "comments" | "details" | "attachments" | "activity";
 type Popover = "status" | "emoji" | "more" | "delete" | "assignee";
 type Draft = { title: string; description: string; assigneeIds: string[]; startDate: string; dueDate: string; priority: Priority; tags: string };
 
@@ -49,6 +50,7 @@ export default function TaskTicket({ task, columnId, columns, team, manager, cur
   const [popover, setPopover] = useState<Popover | null>(null);
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(connected);
+  const [activity, setActivity] = useState<TaskActivity[] | null>(null);
   const [composer, setComposer] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -101,6 +103,20 @@ export default function TaskTicket({ task, columnId, columns, team, manager, cur
       return;
     }
     update("assigneeIds", selected ? draft.assigneeIds.filter((id) => id !== userId) : [...draft.assigneeIds, userId]);
+  }
+
+  async function openActivity() {
+    setTab("activity");
+    if (!connected) return;
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/activity`);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "No se pudo cargar el historial");
+      setActivity(payload as TaskActivity[]);
+    } catch (error) {
+      setActivity([]);
+      onToast(error instanceof Error ? error.message : "No se pudo cargar el historial");
+    }
   }
 
   function togglePopover(name: Popover) {
@@ -385,6 +401,7 @@ export default function TaskTicket({ task, columnId, columns, team, manager, cur
             Attachment
             {attachments.length > 0 && <span className="text-sm text-slate-400">{attachments.length}</span>}
           </TabButton>
+          <TabButton active={tab === "activity"} onClick={openActivity}>Activity</TabButton>
         </div>
       </div>
 
@@ -462,6 +479,27 @@ export default function TaskTicket({ task, columnId, columns, team, manager, cur
             </TicketField>
           </div>
           <p className="text-xs text-slate-400">Los cambios se aplican al presionar <strong className="text-slate-500">Save Ticket</strong>.</p>
+        </div>
+      )}
+
+      {tab === "activity" && (
+        <div className="px-6 py-6">
+          {!connected && <p className="text-sm text-slate-400">El historial se registra en Supabase; inicia sesión para verlo.</p>}
+          {connected && activity === null && <p className="text-sm text-slate-400">Cargando historial…</p>}
+          {connected && activity?.length === 0 && <p className="text-sm text-slate-400">Todavía no hay cambios registrados.</p>}
+          {activity && activity.length > 0 && (
+            <ol className="relative space-y-5 border-l-2 border-slate-100 pl-5">
+              {activity.map((event) => (
+                <li key={event.id} className="relative">
+                  <span className={`absolute -left-[27px] top-1 h-3 w-3 rounded-full border-2 border-white ${ACTIVITY_DOT[event.action] ?? "bg-slate-300"}`} aria-hidden="true" />
+                  <p className="text-[15px] leading-6 text-slate-700">
+                    <strong className="font-semibold text-slate-900">{event.actor?.name ?? "Sistema"}</strong> {describeActivity(event)}
+                  </p>
+                  <time dateTime={event.createdAt} className="text-xs text-slate-400">{formatActivityTime(event.createdAt)}</time>
+                </li>
+              ))}
+            </ol>
+          )}
         </div>
       )}
 
@@ -614,3 +652,60 @@ function formatShortDate(value: string) {
   return new Intl.DateTimeFormat("es-GT", { dateStyle: "medium" }).format(new Date(value));
 }
 
+const ACTIVITY_DOT: Partial<Record<TaskActivity["action"], string>> = {
+  created: "bg-sky-500",
+  status_changed: "bg-green-500",
+  deleted: "bg-red-500",
+  comment_added: "bg-amber-400",
+};
+
+const FIELD_LABEL: Record<string, string> = {
+  title: "el nombre",
+  description: "la descripción",
+  priority: "la prioridad",
+  start_date: "la fecha de inicio",
+  due_date: "la fecha final",
+  tags: "las etiquetas",
+};
+
+function describeActivity(event: TaskActivity) {
+  const value = (event.newValue ?? {}) as Record<string, unknown>;
+  switch (event.action) {
+    case "created":
+      return value.backfilled ? `registró el ticket en ${event.toColumnName ?? "el tablero"} (historial desde esta fecha)` : `creó el ticket en ${event.toColumnName ?? "el tablero"}`;
+    case "status_changed":
+      return `movió el ticket de ${event.fromColumnName ?? "?"} a ${event.toColumnName ?? "?"}`;
+    case "deleted":
+      return "eliminó el ticket";
+    case "assignee_added":
+      return `asignó a ${String(value.name ?? "alguien")}`;
+    case "assignee_removed":
+      return `quitó a ${String(value.name ?? "alguien")}`;
+    case "comment_added":
+      return `comentó: “${String(value.body ?? "")}”`;
+    case "attachment_added":
+      return `${value.kind === "link" ? "agregó el enlace" : "adjuntó"} ${String(value.name ?? "")}`;
+    case "attachment_removed":
+      return `eliminó el adjunto ${String(value.name ?? "")}`;
+    case "updated": {
+      if (event.field === "highlighted") return event.newValue ? "destacó el ticket" : "quitó el destacado";
+      if (event.field === "description") return "editó la descripción";
+      const label = FIELD_LABEL[event.field ?? ""] ?? event.field ?? "un campo";
+      return `cambió ${label} de ${formatValue(event.oldValue)} a ${formatValue(event.newValue)}`;
+    }
+  }
+}
+
+function formatValue(value: unknown) {
+  if (value === null || value === undefined || value === "") return "vacío";
+  if (Array.isArray(value)) return value.length ? value.join(", ") : "ninguna";
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-");
+    return `${month}/${day}/${year}`;
+  }
+  return `“${String(value)}”`;
+}
+
+function formatActivityTime(value: string) {
+  return new Intl.DateTimeFormat("es-GT", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Guatemala" }).format(new Date(value));
+}

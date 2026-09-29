@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { BoardColumn } from "@/core/domain/entities/BoardColumn";
+import { columnKindOf, type BoardColumn, type ColumnKind } from "@/core/domain/entities/BoardColumn";
 import type { Project, ProjectVisibility } from "@/core/domain/entities/Project";
 import type { User } from "@/core/domain/entities/User";
 import Avatar from "@/presentation/components/ui/Avatar";
@@ -17,6 +17,7 @@ export type ProjectSettingsProps = {
   onBack: () => void;
   onSaveGeneral: (changes: { name: string; subtitle: string; visibility: ProjectVisibility }) => void;
   onRenameColumn: (columnId: string, name: string) => void;
+  onChangeColumnKind: (columnId: string, kind: ColumnKind) => void;
   onMoveColumn: (columnId: string, direction: -1 | 1) => void;
   onAddColumn: (name: string) => void;
   onDeleteColumn: (columnId: string, moveTasksTo: string | null) => void;
@@ -93,7 +94,7 @@ function GeneralSection({ project, onSaveGeneral }: ProjectSettingsProps) {
   );
 }
 
-function StatesSection({ project, onRenameColumn, onMoveColumn, onAddColumn, onDeleteColumn }: ProjectSettingsProps) {
+function StatesSection({ project, onRenameColumn, onChangeColumnKind, onMoveColumn, onAddColumn, onDeleteColumn }: ProjectSettingsProps) {
   const [newName, setNewName] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -116,6 +117,7 @@ function StatesSection({ project, onRenameColumn, onMoveColumn, onAddColumn, onD
               isLast={index === project.columns.length - 1}
               canDelete={project.columns.length > 1}
               onRename={(name) => onRenameColumn(column.id, name)}
+              onKindChange={(kind) => onChangeColumnKind(column.id, kind)}
               onMove={(direction) => onMoveColumn(column.id, direction)}
               onDelete={() => setDeleting(column.id)}
             />
@@ -134,12 +136,15 @@ function StatesSection({ project, onRenameColumn, onMoveColumn, onAddColumn, onD
         <input value={newName} onChange={(event) => setNewName(event.target.value)} maxLength={40} placeholder="Nuevo estado, ej. QA" aria-label="Nombre del nuevo estado" className={`${inputClass} min-w-0 flex-1`} />
         <button type="submit" disabled={!newName.trim()} className="inline-flex h-11 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-40"><PlusIcon width={16} height={16} />Agregar estado</button>
       </form>
-      <p className="mt-3 text-xs text-slate-400">El progreso del proyecto cuenta las tareas del estado llamado “Done”.</p>
+      <p className="mt-3 text-xs leading-5 text-slate-400">
+        El <strong className="text-slate-500">tipo</strong> define cómo se mide cada estado en el progreso y en los reportes:
+        una tarea cuenta como terminada al entrar a un estado “Terminado”, y su tiempo de trabajo empieza a correr al entrar a uno “En curso”.
+      </p>
     </Card>
   );
 }
 
-function ColumnRow({ column, isFirst, isLast, canDelete, onRename, onMove, onDelete }: { column: BoardColumn; isFirst: boolean; isLast: boolean; canDelete: boolean; onRename: (name: string) => void; onMove: (direction: -1 | 1) => void; onDelete: () => void }) {
+function ColumnRow({ column, isFirst, isLast, canDelete, onRename, onKindChange, onMove, onDelete }: { column: BoardColumn; isFirst: boolean; isLast: boolean; canDelete: boolean; onRename: (name: string) => void; onKindChange: (kind: ColumnKind) => void; onMove: (direction: -1 | 1) => void; onDelete: () => void }) {
   const [name, setName] = useState(column.name);
 
   function commit() {
@@ -169,6 +174,11 @@ function ColumnRow({ column, isFirst, isLast, canDelete, onRename, onMove, onDel
         aria-label={`Nombre del estado ${column.name}`}
         className="h-10 min-w-0 flex-1 rounded-xl border border-transparent px-3 text-[15px] font-semibold text-slate-800 outline-none hover:border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
       />
+      <select value={columnKindOf(column)} onChange={(event) => onKindChange(event.target.value as ColumnKind)} aria-label={`Tipo del estado ${column.name}`} className={`h-9 shrink-0 rounded-lg border px-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-100 ${KIND_STYLE[columnKindOf(column)]}`}>
+        <option value="todo">Pendiente</option>
+        <option value="active">En curso</option>
+        <option value="done">Terminado</option>
+      </select>
       <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">{column.tasks.length} {column.tasks.length === 1 ? "tarea" : "tareas"}</span>
       <button type="button" onClick={onDelete} disabled={!canDelete} title={canDelete ? "Eliminar estado" : "El tablero necesita al menos un estado"} aria-label={`Eliminar ${column.name}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"><TrashIcon width={18} height={18} /></button>
     </div>
@@ -344,5 +354,11 @@ function VisibilityOption({ checked, onChange, title, text }: { checked: boolean
 function Notice({ children }: { children: React.ReactNode }) {
   return <p className="mb-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">{children}</p>;
 }
+
+const KIND_STYLE: Record<ColumnKind, string> = {
+  todo: "border-slate-200 bg-slate-50 text-slate-600",
+  active: "border-sky-200 bg-sky-50 text-sky-700",
+  done: "border-green-200 bg-green-50 text-green-700",
+};
 
 const inputClass = "h-11 w-full rounded-xl border border-slate-200 px-3 text-[15px] text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100";

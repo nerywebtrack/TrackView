@@ -19,7 +19,7 @@ type ProjectHeaderProps = {
   onSort: () => void;
   onGroup: () => void;
   onAddColumn: () => void;
-  onSubtitle: () => void;
+  onSubtitle?: () => void;
 };
 
 export default function ProjectHeader({
@@ -70,14 +70,18 @@ export default function ProjectHeader({
                 {project.visibility === "public" ? "PUBLIC" : "PRIVATE"}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={onSubtitle}
-              className="mt-1 flex items-center gap-1 text-sm text-slate-500 transition hover:text-slate-700"
-            >
-              {project.subtitle}
-              <ChevronDownIcon width={14} height={14} />
-            </button>
+            {onSubtitle ? (
+              <button
+                type="button"
+                onClick={onSubtitle}
+                className="mt-1 flex items-center gap-1 text-sm text-slate-500 transition hover:text-slate-700"
+              >
+                {project.subtitle}
+                <ChevronDownIcon width={14} height={14} />
+              </button>
+            ) : (
+              <p className="mt-1 text-sm text-slate-500">{project.subtitle}</p>
+            )}
           </div>
         </div>
 
