@@ -1,0 +1,18 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Scopeboard | TrackView",
+  description: "Gestor de proyectos con tablero kanban (Clean Architecture)",
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="es" className="h-full antialiased" suppressHydrationWarning>
+      <body className="min-h-full" suppressHydrationWarning>
+        {children}
+      </body>
+    </html>
+  );
+}

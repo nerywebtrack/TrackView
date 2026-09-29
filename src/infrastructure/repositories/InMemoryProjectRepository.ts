@@ -1,0 +1,19 @@
+import type { Project, ProjectId } from "@/core/domain/entities/Project";
+import type { ProjectRepository } from "@/core/domain/repositories/ProjectRepository";
+import { projects } from "@/infrastructure/data/projects";
+
+export class InMemoryProjectRepository implements ProjectRepository {
+  async findById(id: ProjectId): Promise<Project | null> {
+    return projects.find((project) => project.id === id) ?? null;
+  }
+
+  async findAll(): Promise<Project[]> {
+    return projects;
+  }
+
+  async save(project: Project): Promise<void> {
+    const index = projects.findIndex((item) => item.id === project.id);
+    if (index >= 0) projects[index] = project;
+    else projects.push(project);
+  }
+}
