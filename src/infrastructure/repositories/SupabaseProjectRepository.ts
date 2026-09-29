@@ -59,6 +59,25 @@ export class SupabaseProjectRepository implements ProjectRepository {
     };
   }
 
+  async findTeam(projectId: ProjectId): Promise<{ workspaceId: string; members: User[]; manager?: User } | null> {
+    const { data, error } = await this.client.from("projects").select("id,workspace_id,name,subtitle,visibility").eq("id", projectId).maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    const project = data as ProjectRow;
+    return { workspaceId: project.workspace_id, ...(await this.loadTeam(project)) };
+  }
+
+  // Only the workspace owner can read this list (RLS); everyone else gets [].
+  async findRemovedMembers(workspaceId: string): Promise<User[]> {
+    const { data: removed, error } = await this.client.from("workspace_removed_users").select("user_id").eq("workspace_id", workspaceId);
+    if (error) throw error;
+    const ids = ((removed ?? []) as Array<{ user_id: string }>).map((row) => row.user_id);
+    if (!ids.length) return [];
+    const { data: profiles, error: profileError } = await this.client.from("profiles").select(PROFILE_FIELDS).in("auth_user_id", ids);
+    if (profileError) throw profileError;
+    return ((profiles ?? []) as ProfileRow[]).map(mapUser);
+  }
+
   // The team is the set of people who actually signed in and joined the
   // workspace (workspace_members), not the seeded demo project_members.
   private async loadTeam(project: ProjectRow): Promise<{ members: User[]; manager?: User }> {

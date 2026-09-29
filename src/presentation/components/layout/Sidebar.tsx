@@ -1,4 +1,4 @@
-import type { Interaction } from "@/core/domain/entities/User";
+import type { User } from "@/core/domain/entities/User";
 import type { Workspace } from "@/core/domain/entities/Workspace";
 import Avatar from "@/presentation/components/ui/Avatar";
 import {
@@ -24,7 +24,9 @@ const navItems = [
 
 type SidebarProps = {
   workspace: Workspace;
-  interactions: Interaction[];
+  members: User[];
+  managerId?: string;
+  currentUserId: string;
   collapsed: boolean;
   activeItem: string;
   onCollapse: () => void;
@@ -33,7 +35,7 @@ type SidebarProps = {
   onContacts: () => void;
 };
 
-export default function Sidebar({ workspace, interactions, collapsed, activeItem, onCollapse, onNavigate, onLogout, onContacts }: SidebarProps) {
+export default function Sidebar({ workspace, members, managerId, currentUserId, collapsed, activeItem, onCollapse, onNavigate, onLogout, onContacts }: SidebarProps) {
   return (
     <aside className={`hidden shrink-0 flex-col rounded-3xl bg-white p-4 shadow-sm transition-all md:flex ${collapsed ? "w-[76px]" : "w-[232px]"}`}>
       <div className="flex items-center justify-between">
@@ -79,19 +81,27 @@ export default function Sidebar({ workspace, interactions, collapsed, activeItem
       </nav>
 
       <div className={`mt-6 border-t border-slate-100 pt-5 ${collapsed ? "hidden" : "block"}`}>
-        <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-400">
-          RECENT INTERACTIONS
+        <p className="flex items-center justify-between text-[10px] font-semibold tracking-[0.14em] text-slate-400">
+          PROJECT MEMBERS
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 tracking-normal text-slate-500">{members.length}</span>
         </p>
-        <ul className="mt-3 flex flex-col gap-3">
-          {interactions.map(({ user, timeAgo }) => (
+        <ul className="mt-3 flex max-h-[320px] flex-col gap-3 overflow-y-auto pr-1">
+          {members.map((user) => (
             <li key={user.id} className="flex items-center gap-3">
-              <Avatar user={user} size={32} />
-              <div className="leading-tight">
-                <p className="text-sm font-medium text-slate-800">{user.name}</p>
-                <p className="text-[11px] text-slate-400">{timeAgo}</p>
+              <span className="relative">
+                <Avatar user={user} size={32} />
+                {user.id === managerId && <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-amber-400" title="Dueño del proyecto" />}
+              </span>
+              <div className="min-w-0 leading-tight">
+                <p className="truncate text-sm font-medium text-slate-800">
+                  {user.name}
+                  {user.id === currentUserId && <span className="ml-1 text-[11px] font-normal text-slate-400">(tú)</span>}
+                </p>
+                <p className="truncate text-[11px] text-slate-400">{user.id === managerId ? "Owner" : user.email ?? "Member"}</p>
               </div>
             </li>
           ))}
+          {members.length === 0 && <li className="text-xs text-slate-400">Todavía no hay miembros.</li>}
         </ul>
       </div>
 

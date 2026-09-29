@@ -6,12 +6,9 @@ import { calculateProgress } from "@/core/domain/services/ProgressCalculator";
 export class GetProjectBoard {
   constructor(private readonly projects: ProjectRepository) {}
 
-  async execute(projectId: ProjectId): Promise<BoardView> {
+  async execute(projectId: ProjectId): Promise<BoardView | null> {
     const project = await this.projects.findById(projectId);
-
-    if (!project) {
-      throw new Error(`Project not found: ${projectId}`);
-    }
+    if (!project) return null;
 
     return {
       project,

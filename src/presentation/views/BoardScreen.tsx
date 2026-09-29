@@ -18,16 +18,28 @@ export default async function BoardScreen({
     authenticatedUser = await syncAuthenticatedProfile(await createClient());
     isAuthenticated = Boolean(authenticatedUser);
   }
-  const [{ project }, interactions, workspace, currentUser] =
+  const [board, workspace, currentUser] =
     await Promise.all([
       new GetProjectBoard(projectRepository).execute(projectId),
-      container.getRecentInteractions.execute(),
       container.getCurrentWorkspace.execute(),
       container.getCurrentUser.execute(),
     ]);
 
-  const visibleProject = authenticatedUser && !project.members.some((member) => member.id === authenticatedUser.id)
-    ? { ...project, members: [...project.members, authenticatedUser] }
-    : project;
-  return <BoardWorkspace initialProject={visibleProject} interactions={interactions} workspace={workspace} currentUser={authenticatedUser ?? currentUser} isAuthenticated={isAuthenticated} />;
+  if (!board) return <ProjectMissing projectId={projectId} />;
+  return <BoardWorkspace initialProject={board.project} workspace={workspace} currentUser={authenticatedUser ?? currentUser} isAuthenticated={isAuthenticated} />;
+}
+
+function ProjectMissing({ projectId }: { projectId: string }) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#e6eafb] p-4">
+      <section className="w-full max-w-md rounded-3xl bg-white p-7 text-center shadow-xl">
+        <h1 className="text-xl font-bold text-slate-900">Este tablero no existe todavía</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-500">
+          No se encontró el proyecto <code className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">{projectId}</code>.
+          Si la base de datos se reinició, vuelve a cargar los datos iniciales con{" "}
+          <code className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">supabase db query --linked -f supabase/seed.sql</code>.
+        </p>
+      </section>
+    </main>
+  );
 }

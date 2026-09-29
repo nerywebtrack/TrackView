@@ -8,24 +8,21 @@ import type { User } from "@/core/domain/entities/User";
 import Avatar from "@/presentation/components/ui/Avatar";
 import {
   CalendarIcon,
-  CheckCircleIcon,
-  ChevronDownIcon,
   ImageIcon,
   LinkIcon,
   MoreVerticalIcon,
   PaperclipIcon,
   PencilIcon,
-  PlusIcon,
   ReplyIcon,
   SmileIcon,
   TrashIcon,
 } from "@/presentation/components/ui/Icons";
+import { AssigneePicker, Divider, EMOJIS, Menu, MenuItem, OutlineButton, StatusPicker, TabButton, TicketField, ToolButton, formatBytes, isImage, safeHostname } from "./ticketParts";
 
 type Tab = "comments" | "details" | "attachments";
 type Popover = "status" | "emoji" | "more" | "delete" | "assignee";
 type Draft = { title: string; description: string; assigneeIds: string[]; startDate: string; dueDate: string; priority: Priority; tags: string };
 
-const EMOJIS = ["👍", "🎉", "🔥", "✅", "👀", "🙏", "😄", "❤️", "🚀", "💡", "⚠️", "📌"];
 const PRIORITY_LABEL: Record<Priority, string> = { low: "Low", medium: "Medium", high: "High" };
 
 export type TaskTicketProps = {
@@ -65,7 +62,6 @@ export default function TaskTicket({ task, columnId, columns, team, manager, cur
   const replyRef = useRef<HTMLTextAreaElement>(null);
 
   const attachments = task.attachments ?? [];
-  const status = columns.find((column) => column.id === columnId)?.name ?? "Sin estado";
   const assigneeOptions = useMemo(() => {
     const extra = assigneesOf(task).filter((user) => user.id !== "unassigned" && !team.some((member) => member.id === user.id));
     return [...team, ...extra];
@@ -297,23 +293,7 @@ export default function TaskTicket({ task, columnId, columns, team, manager, cur
       </header>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 px-6 py-5">
-        <div className="relative">
-          <button type="button" onClick={() => togglePopover("status")} aria-haspopup="listbox" aria-expanded={popover === "status"} className="flex h-12 items-center gap-2.5 rounded-xl border border-slate-200 pl-4 pr-3 text-[16px] font-medium text-slate-800 transition hover:bg-slate-50">
-            <CheckCircleIcon className="text-green-500" />
-            {status}
-            <ChevronDownIcon width={16} height={16} className="text-slate-400" />
-          </button>
-          {popover === "status" && (
-            <Menu className="left-0 w-56" onClose={() => setPopover(null)}>
-              <p className="px-3 pb-1 pt-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Mover a</p>
-              {columns.map((column) => (
-                <MenuItem key={column.id} active={column.id === columnId} onClick={() => { setPopover(null); if (column.id !== columnId) onMoveTo(column.id); }}>
-                  {column.name}
-                </MenuItem>
-              ))}
-            </Menu>
-          )}
-        </div>
+        <StatusPicker columns={columns} value={columnId} open={popover === "status"} onToggle={() => togglePopover("status")} onClose={() => setPopover(null)} onChange={onMoveTo} />
 
         <div className="flex items-center gap-1">
           <ToolButton title="Adjuntar archivo" onClick={() => fileInputRef.current?.click()}><PaperclipIcon width={21} height={21} /></ToolButton>
@@ -374,30 +354,7 @@ export default function TaskTicket({ task, columnId, columns, team, manager, cur
         </TicketField>
 
         <TicketField label="Assigned to">
-          <div className="relative">
-            <button type="button" onClick={() => togglePopover("assignee")} aria-haspopup="listbox" aria-expanded={popover === "assignee"} title={assignees.length ? `Asignado a ${assignees.map((user) => user.name).join(", ")}` : "Asignar personas"} className="flex items-center rounded-full">
-              {assignees.slice(0, 4).map((user) => <Avatar key={user.id} user={user} size={40} className="-ml-2.5 first:ml-0" />)}
-              {assignees.length > 4 && <span className="-ml-2.5 grid h-10 w-10 place-items-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600 ring-2 ring-white">+{assignees.length - 4}</span>}
-              <span className="-ml-2.5 grid h-10 w-10 place-items-center rounded-full border-2 border-dashed border-slate-300 bg-white text-slate-400 ring-2 ring-white transition hover:border-sky-400 hover:text-sky-500"><PlusIcon width={16} height={16} /></span>
-            </button>
-            {popover === "assignee" && (
-              <Menu className="left-0 w-72" onClose={() => setPopover(null)}>
-                <p className="px-3 pb-1 pt-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Asignar personas</p>
-                <div className="max-h-64 overflow-y-auto">
-                  {assigneeOptions.map((user) => (
-                    <button key={user.id} type="button" role="menuitemcheckbox" aria-checked={draft.assigneeIds.includes(user.id)} onClick={() => toggleAssignee(user.id)} className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-slate-50 ${draft.assigneeIds.includes(user.id) ? "bg-sky-50" : ""}`}>
-                      <Avatar user={user} size={32} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-slate-800">{user.name}</span>
-                        <span className="block truncate text-xs text-slate-400">{user.email ?? roleOf(user)}</span>
-                      </span>
-                      {draft.assigneeIds.includes(user.id) && <CheckCircleIcon width={18} height={18} className="text-sky-500" />}
-                    </button>
-                  ))}
-                </div>
-              </Menu>
-            )}
-          </div>
+          <AssigneePicker options={assigneeOptions} selectedIds={draft.assigneeIds} open={popover === "assignee"} onToggle={() => togglePopover("assignee")} onClose={() => setPopover(null)} onSelect={toggleAssignee} subtitleOf={(user) => user.email ?? roleOf(user)} />
         </TicketField>
 
         <TicketField label="Timeline">
@@ -610,50 +567,6 @@ function Composer({ textareaRef, user, value, placeholder, submitLabel, onChange
   );
 }
 
-function TicketField({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="min-w-0"><p className="mb-3 text-[15px] text-slate-400">{label}</p>{children}</div>;
-}
-
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button type="button" role="tab" aria-selected={active} onClick={onClick} className={`relative flex items-center gap-2 pb-4 pt-1 text-[16px] transition ${active ? "font-medium text-slate-900" : "text-slate-500 hover:text-slate-700"}`}>
-      {children}
-      {active && <span className="absolute inset-x-0 -bottom-px h-[3px] rounded-full bg-amber-400" aria-hidden="true" />}
-    </button>
-  );
-}
-
-function ToolButton({ title, onClick, active = false, danger = false, children }: { title: string; onClick: () => void; active?: boolean; danger?: boolean; children: React.ReactNode }) {
-  const tone = danger ? "text-red-600 hover:bg-red-50" : active ? "bg-slate-100 text-slate-800" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700";
-  return <button type="button" title={title} aria-label={title} onClick={onClick} className={`grid h-10 w-10 place-items-center rounded-lg transition ${tone}`}>{children}</button>;
-}
-
-function OutlineButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
-  return <button type="button" onClick={onClick} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">{children}</button>;
-}
-
-function Divider() {
-  return <span className="mx-1.5 h-6 w-px bg-slate-200" aria-hidden="true" />;
-}
-
-function Menu({ className = "", onClose, children }: { className?: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <>
-      <div className="fixed inset-0 z-20" aria-hidden="true" onMouseDown={onClose} />
-      <div role="menu" className={`absolute top-full z-30 mt-2 rounded-xl border border-slate-100 bg-white p-1.5 text-sm shadow-xl ${className}`}>{children}</div>
-    </>
-  );
-}
-
-function MenuItem({ active = false, danger = false, onClick, children }: { active?: boolean; danger?: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button type="button" role="menuitem" onClick={onClick} className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left font-medium transition ${danger ? "text-red-600 hover:bg-red-50" : active ? "bg-sky-50 text-sky-700" : "text-slate-700 hover:bg-slate-50"}`}>
-      {children}
-      {active && <CheckCircleIcon width={16} height={16} className="text-sky-500" />}
-    </button>
-  );
-}
-
 function toDraft(task: Task): Draft {
   return {
     title: task.title,
@@ -701,22 +614,3 @@ function formatShortDate(value: string) {
   return new Intl.DateTimeFormat("es-GT", { dateStyle: "medium" }).format(new Date(value));
 }
 
-function formatBytes(bytes: number) {
-  if (!bytes) return "0 KB";
-  const units = ["B", "KB", "MB", "GB"];
-  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const value = bytes / 1024 ** exponent;
-  return `${exponent === 0 ? value : value.toFixed(1)} ${units[exponent]}`;
-}
-
-function isImage(attachment: Attachment) {
-  return attachment.kind === "file" && (attachment.contentType?.startsWith("image/") ?? /\.(png|jpe?g|gif|webp|svg)$/i.test(attachment.name));
-}
-
-function safeHostname(url: string) {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return url;
-  }
-}
