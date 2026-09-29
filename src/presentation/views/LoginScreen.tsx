@@ -1,41 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { LogoIcon } from "@/presentation/components/ui/Icons";
 
 export default function LoginScreen({ initialError = "" }: { initialError?: string }) {
-  const router = useRouter();
   const [error, setError] = useState(initialError);
-  const [loading, setLoading] = useState<"password" | "google" | null>(null);
-
-  async function login(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading("password");
-    setError("");
-    const form = new FormData(event.currentTarget);
-    const supabase = createClient();
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email: String(form.get("email") ?? "").trim(),
-      password: String(form.get("password") ?? ""),
-    });
-    if (loginError) {
-      setError(loginError.message);
-      setLoading(null);
-      return;
-    }
-
-    const { error: claimError } = await supabase.rpc("claim_workspace", { target_workspace_id: "ws-google" });
-    if (claimError) {
-      await supabase.auth.signOut();
-      setError(`No se pudo asociar el workspace: ${claimError.message}`);
-      setLoading(null);
-      return;
-    }
-    router.replace("/");
-    router.refresh();
-  }
+  const [loading, setLoading] = useState<"google" | null>(null);
 
   async function loginWithGoogle() {
     setLoading("google");
@@ -63,14 +34,8 @@ export default function LoginScreen({ initialError = "" }: { initialError?: stri
           <GoogleIcon />
           {loading === "google" ? "Conectando con Google…" : "Continuar con Google"}
         </button>
-        <div className="my-5 flex items-center gap-3 text-xs text-slate-400"><span className="h-px flex-1 bg-slate-200" /><span>O CON CORREO</span><span className="h-px flex-1 bg-slate-200" /></div>
-        <form onSubmit={login} className="space-y-4">
-          <label className="block text-sm font-medium text-slate-700">Correo electrónico<input name="email" type="email" autoComplete="email" required autoFocus className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" /></label>
-          <label className="block text-sm font-medium text-slate-700">Contraseña<input name="password" type="password" autoComplete="current-password" required minLength={6} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" /></label>
-          {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-          <button type="submit" disabled={loading !== null} className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60">{loading === "password" ? "Conectando…" : "Iniciar sesión"}</button>
-        </form>
-        <p className="mt-5 text-center text-xs leading-5 text-slate-400">Utiliza un usuario creado en Authentication → Users dentro de Supabase.</p>
+        {error && <p role="alert" className="mt-5 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        <p className="mt-5 text-center text-xs leading-5 text-slate-400">Solo se permite el acceso mediante una cuenta autorizada de Google.</p>
       </section>
     </main>
   );

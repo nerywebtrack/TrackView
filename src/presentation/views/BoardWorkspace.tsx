@@ -11,6 +11,8 @@ import Board from "@/presentation/components/board/Board";
 import ProjectHeader from "@/presentation/components/board/ProjectHeader";
 import Sidebar from "@/presentation/components/layout/Sidebar";
 import Topbar from "@/presentation/components/layout/Topbar";
+import { CalendarIcon, MoreIcon, PaperclipIcon } from "@/presentation/components/ui/Icons";
+import Avatar from "@/presentation/components/ui/Avatar";
 
 type Modal =
   | { type: "add-column" }
@@ -266,7 +268,7 @@ export default function BoardWorkspace({ initialProject, interactions, workspace
     <div className="flex min-h-screen gap-4 bg-[#e6eafb] p-3 sm:p-4">
       <Sidebar workspace={workspace} interactions={interactions} collapsed={collapsed} activeItem={activeItem} onCollapse={() => setCollapsed((value) => !value)} onNavigate={navigate} onLogout={logout} onContacts={() => setModal({ type: "info", title: "Contactos", message: `${project.members.length + project.extraMembers} personas colaboran en este proyecto.` })} />
       <main className="flex min-w-0 flex-1 flex-col gap-5">
-        <Topbar currentUser={currentUser} query={query} onQueryChange={setQuery} onAction={topbarAction} />
+        <Topbar currentUser={currentUser} query={query} onQueryChange={setQuery} onAction={topbarAction} onLogout={logout} />
         {usesSupabase && !isAuthenticated && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <span>El tablero es público, pero debes iniciar sesión para guardar cambios.</span>
@@ -287,14 +289,15 @@ export default function BoardWorkspace({ initialProject, interactions, workspace
         />
       </main>
 
-      {modal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setModal(null); }}>
-        <section role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+      {modal && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/35 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setModal(null); }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="dialog-title" className={`w-full rounded-3xl bg-white shadow-2xl ${modal.type === "task-actions" ? "max-w-3xl overflow-hidden" : "max-w-md p-6"}`}>
+          {modal.type === "task-actions" && selectedTask ? <TaskDetail task={selectedTask} status={project.columns.find((column) => column.id === modal.columnId)?.name ?? "En progreso"} manager={currentUser} onClose={() => setModal(null)} onMove={() => moveTask(modal.columnId, modal.taskId)} onHighlight={() => toggleHighlight(modal.columnId, modal.taskId)} onDelete={() => deleteTask(modal.columnId, modal.taskId)} /> : <>
           <div className="mb-5 flex items-start justify-between gap-4"><div><h2 id="dialog-title" className="text-xl font-bold text-slate-900">{modalTitle(modal, selectedTask)}</h2></div><button type="button" onClick={() => setModal(null)} aria-label="Cerrar" className="rounded-full px-2 py-1 text-xl text-slate-400 hover:bg-slate-100">×</button></div>
           {modal.type === "add-column" && <form action={addColumn} className="space-y-4"><Field label="Nombre de la columna" name="name" autoFocus required /><Submit label="Crear columna" /></form>}
           {modal.type === "add-task" && <TaskForm users={users} onSubmit={(data) => addTask(modal.columnId, data)} />}
           {modal.type === "project-settings" && <form action={updateProject} className="space-y-4"><Field label="Descripción" name="subtitle" defaultValue={project.subtitle} required /><label className="block text-sm font-medium text-slate-700">Visibilidad<select name="visibility" defaultValue={project.visibility} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"><option value="public">Público</option><option value="private">Privado</option></select></label><Submit label="Guardar cambios" /></form>}
-          {modal.type === "task-actions" && selectedTask && <div className="grid gap-2"><ActionButton onClick={() => moveTask(modal.columnId, modal.taskId)}>Mover a la siguiente columna</ActionButton><ActionButton onClick={() => toggleHighlight(modal.columnId, modal.taskId)}>{selectedTask.highlighted ? "Quitar destacado" : "Destacar tarea"}</ActionButton><ActionButton danger onClick={() => deleteTask(modal.columnId, modal.taskId)}>Eliminar tarea</ActionButton></div>}
           {modal.type === "info" && <><p className="text-sm leading-6 text-slate-600">{modal.message}</p><div className="mt-5"><Submit label="Entendido" onClick={() => setModal(null)} /></div></>}
+          </>}
         </section>
       </div>}
       {toast && <div role="status" className="fixed bottom-5 right-5 z-[60] rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-xl">{toast}</div>}
@@ -318,10 +321,32 @@ function Submit({ label, onClick }: { label: string; onClick?: () => void }) {
   return <button type={onClick ? "button" : "submit"} onClick={onClick} className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">{label}</button>;
 }
 
-function ActionButton({ children, onClick, danger = false }: { children: React.ReactNode; onClick: () => void; danger?: boolean }) {
-  return <button type="button" onClick={onClick} className={`rounded-xl px-4 py-3 text-left text-sm font-semibold transition ${danger ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-slate-50 text-slate-700 hover:bg-slate-100"}`}>{children}</button>;
-}
-
 function TaskForm({ users, onSubmit }: { users: User[]; onSubmit: (data: FormData) => void }) {
   return <form action={onSubmit} className="space-y-4"><Field label="Título" name="title" autoFocus required /><Field label="Descripción" name="description" /><div className="grid grid-cols-2 gap-3"><label className="text-sm font-medium text-slate-700">Prioridad<select name="priority" defaultValue="medium" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label><label className="text-sm font-medium text-slate-700">Responsable<select name="assignee" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">{users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select></label></div><Field label="Fecha límite" name="dueDate" type="date" /><Field label="Etiquetas (separadas por coma)" name="tags" /><Submit label="Crear tarea" /></form>;
+}
+
+function TaskDetail({ task, status, manager, onClose, onMove, onHighlight, onDelete }: { task: Task; status: string; manager: User; onClose: () => void; onMove: () => void; onHighlight: () => void; onDelete: () => void }) {
+  return <div>
+    <header className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+      <h2 id="dialog-title" className="text-2xl font-bold text-slate-900">Project Ticket</h2>
+      <div className="flex items-center gap-3"><span className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">{task.highlighted ? "Featured" : "Draft"}</span><button type="button" onClick={onClose} className="rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-600">Save Ticket</button></div>
+    </header>
+    <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+      <span className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800">✓ &nbsp;{status}</span>
+      <div className="flex items-center gap-4 text-slate-500"><PaperclipIcon /><span>☺</span><span>↗</span><span>▧</span><MoreIcon /><button type="button" onClick={onDelete} aria-label="Eliminar tarea" className="text-red-500 hover:text-red-700">▢</button></div>
+    </div>
+    <div className="grid gap-8 px-6 py-7 sm:grid-cols-2">
+      <DetailField label="Project name" value={task.title} />
+      <DetailField label="Project Manager" value={manager.name} avatar={manager} />
+      <DetailField label="Assigned to" value={task.assignee.name} avatar={task.assignee} />
+      <DetailField label="Timeline" value={task.dueDate} icon={<CalendarIcon width={22} height={22} />} />
+    </div>
+    <div className="border-t border-slate-100 px-6 pt-5"><div className="flex gap-8 text-sm font-medium"><span className="border-b-4 border-amber-400 pb-3 text-slate-900">Comments <b className="ml-1 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">1</b></span><span className="pb-3 text-slate-400">Details</span><span className="pb-3 text-slate-400">Attachment</span></div>
+      <div className="border-t border-slate-100 py-5"><div className="flex items-center gap-3"><Avatar user={task.assignee} size={40} /><div><p className="font-semibold text-slate-800">{task.assignee.name}</p><p className="text-xs text-slate-400">Project member · Today</p></div></div><p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">{task.description}</p><div className="mt-4 flex gap-2"><button type="button" onClick={onMove} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Move ticket</button><button type="button" onClick={onHighlight} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{task.highlighted ? "Remove highlight" : "Highlight"}</button></div></div>
+    </div>
+  </div>;
+}
+
+function DetailField({ label, value, avatar, icon }: { label: string; value: string; avatar?: User; icon?: React.ReactNode }) {
+  return <div><p className="mb-2 text-sm text-slate-400">{label}</p><div className="flex items-center gap-3 text-lg font-semibold text-slate-800">{avatar ? <Avatar user={avatar} size={38} /> : icon}{value}</div></div>;
 }
