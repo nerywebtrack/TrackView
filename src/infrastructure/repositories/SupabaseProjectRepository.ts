@@ -4,6 +4,7 @@ import type { BoardColumn } from "@/core/domain/entities/BoardColumn";
 import type { Project, ProjectId, ProjectVisibility } from "@/core/domain/entities/Project";
 import type { Priority, Task } from "@/core/domain/entities/Task";
 import type { User } from "@/core/domain/entities/User";
+import type { Workspace } from "@/core/domain/entities/Workspace";
 import type { ProjectRepository } from "@/core/domain/repositories/ProjectRepository";
 import { TASK_ATTACHMENTS_BUCKET } from "@/lib/supabase/storage";
 
@@ -163,6 +164,16 @@ export class SupabaseProjectRepository implements ProjectRepository {
     if (error) throw error;
     const projects = await Promise.all((data ?? []).map((row) => this.findById(row.id)));
     return projects.filter((project): project is Project => project !== null);
+  }
+
+  // RLS only lets workspace members read the row; others get null.
+  async findWorkspace(projectId: ProjectId): Promise<Workspace | null> {
+    const { data: project, error } = await this.client.from("projects").select("workspace_id").eq("id", projectId).maybeSingle();
+    if (error) throw error;
+    if (!project) return null;
+    const { data, error: workspaceError } = await this.client.from("workspaces").select("id,name,label,initial").eq("id", project.workspace_id).maybeSingle();
+    if (workspaceError) throw workspaceError;
+    return (data as Workspace | null) ?? null;
   }
 
   async save(project: Project): Promise<void> {

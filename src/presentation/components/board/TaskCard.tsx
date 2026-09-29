@@ -24,16 +24,30 @@ export default function TaskCard({ task, onAction, onDragStart, onDragEnd }: Tas
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
+      onClick={onAction}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onAction();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Abrir ${task.title}`}
       className={cn(
-        "cursor-grab rounded-3xl bg-white shadow-sm transition hover:shadow-md active:cursor-grabbing",
-        task.highlighted && "ring-2 ring-fuchsia-500",
+        "cursor-pointer rounded-3xl bg-white shadow-sm outline-none transition hover:shadow-md hover:ring-2 hover:ring-indigo-100 focus-visible:ring-2 focus-visible:ring-indigo-400 active:cursor-grabbing",
+        task.highlighted && "ring-2 ring-fuchsia-500 hover:ring-fuchsia-500",
       )}
     >
       <div className="flex items-start justify-between pr-3">
         <PriorityBadge priority={task.priority} />
         <button
           type="button"
-          onClick={onAction}
+          onClick={(event) => {
+            event.stopPropagation();
+            onAction();
+          }}
           aria-label="Más opciones"
           className="mt-2 text-slate-300 transition hover:text-slate-500"
         >

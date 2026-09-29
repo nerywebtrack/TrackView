@@ -45,7 +45,7 @@ export default function TaskTicket({ task, columnId, columns, team, manager, cur
   const savedDraft = useMemo(() => toDraft(task), [task]);
   const [draft, setDraft] = useState<Draft>(savedDraft);
   const [editing, setEditing] = useState(false);
-  const [tab, setTab] = useState<Tab>("comments");
+  const [tab, setTab] = useState<Tab>("details");
   const [popover, setPopover] = useState<Popover | null>(null);
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(connected);

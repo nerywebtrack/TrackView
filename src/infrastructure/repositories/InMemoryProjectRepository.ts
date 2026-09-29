@@ -1,6 +1,8 @@
 import type { Project, ProjectId } from "@/core/domain/entities/Project";
 import type { ProjectRepository } from "@/core/domain/repositories/ProjectRepository";
+import type { Workspace } from "@/core/domain/entities/Workspace";
 import { projects } from "@/infrastructure/data/projects";
+import { currentWorkspace } from "@/infrastructure/data/workspace";
 
 export class InMemoryProjectRepository implements ProjectRepository {
   async findById(id: ProjectId): Promise<Project | null> {
@@ -9,6 +11,10 @@ export class InMemoryProjectRepository implements ProjectRepository {
 
   async findAll(): Promise<Project[]> {
     return projects;
+  }
+
+  async findWorkspace(): Promise<Workspace | null> {
+    return currentWorkspace;
   }
 
   async save(project: Project): Promise<void> {

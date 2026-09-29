@@ -18,14 +18,15 @@ export default async function BoardScreen({
     authenticatedUser = await syncAuthenticatedProfile(await createClient());
     isAuthenticated = Boolean(authenticatedUser);
   }
-  const [board, workspace, currentUser] =
+  const [board, realWorkspace, currentUser] =
     await Promise.all([
       new GetProjectBoard(projectRepository).execute(projectId),
-      container.getCurrentWorkspace.execute(),
+      projectRepository.findWorkspace(projectId),
       container.getCurrentUser.execute(),
     ]);
 
   if (!board) return <ProjectMissing projectId={projectId} />;
+  const workspace = realWorkspace ?? { id: "", name: board.project.name, label: "Workspace", initial: board.project.name.charAt(0).toUpperCase() || "W" };
   return <BoardWorkspace initialProject={board.project} workspace={workspace} currentUser={authenticatedUser ?? currentUser} isAuthenticated={isAuthenticated} />;
 }
 
