@@ -14,6 +14,7 @@ import ProjectHeader from "@/presentation/components/board/ProjectHeader";
 import TaskTicket from "@/presentation/components/board/TaskTicket";
 import TaskCreateForm, { type NewTaskInput } from "@/presentation/components/board/TaskCreateForm";
 import ProjectSettings from "@/presentation/components/settings/ProjectSettings";
+import ReportsScreen from "@/presentation/components/reports/ReportsScreen";
 import Sidebar from "@/presentation/components/layout/Sidebar";
 import Topbar from "@/presentation/components/layout/Topbar";
 
@@ -159,7 +160,7 @@ export default function BoardWorkspace({ initialProject, workspace, currentUser,
   function navigate(item: string) {
     if (!isOwner && item !== "Projects") return;
     setActiveItem(item);
-    if (item !== "Projects" && item !== "Settings") setModal({ type: "info", title: item, message: `La sección ${item} está lista para conectarse a su propio módulo. El tablero de Projects permanece disponible.` });
+    if (item !== "Projects" && item !== "Settings" && item !== "Reports") setModal({ type: "info", title: item, message: `La sección ${item} está lista para conectarse a su propio módulo. El tablero de Projects permanece disponible.` });
   }
 
   function topbarAction(action: "flags" | "messages" | "notifications" | "profile") {
@@ -387,7 +388,9 @@ export default function BoardWorkspace({ initialProject, workspace, currentUser,
             <Link href="/login" className="rounded-full bg-amber-900 px-4 py-2 font-semibold text-white">Iniciar sesión</Link>
           </div>
         )}
-        {currentSection === "Settings" ? (
+        {currentSection === "Reports" ? (
+          <ReportsScreen projectId={project.id} connected={connected} onBack={() => navigate("Projects")} />
+        ) : currentSection === "Settings" ? (
           <ProjectSettings
             project={project}
             currentUser={currentUser}

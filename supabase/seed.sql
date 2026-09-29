@@ -11,9 +11,9 @@ insert into public.projects (id, workspace_id, name, subtitle, visibility) value
 on conflict (id) do nothing;
 
 -- Only create default columns for a project that has none yet.
-insert into public.board_columns (id, project_id, name, position)
-select column_id, 'marketing-campaign', column_name, position
-from (values ('backlog', 'Backlog', 0), ('in-progress', 'In Progress', 1), ('review', 'Review', 2), ('done', 'Done', 3)) as defaults(column_id, column_name, position)
+insert into public.board_columns (id, project_id, name, position, kind)
+select column_id, 'marketing-campaign', column_name, position, column_kind
+from (values ('backlog', 'Backlog', 0, 'todo'), ('in-progress', 'In Progress', 1, 'active'), ('review', 'Review', 2, 'active'), ('done', 'Done', 3, 'done')) as defaults(column_id, column_name, position, column_kind)
 where not exists (select 1 from public.board_columns where project_id = 'marketing-campaign')
 on conflict (id) do nothing;
 
