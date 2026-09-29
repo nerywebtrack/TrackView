@@ -1,3 +1,4 @@
+import type { Attachment } from "./Attachment";
 import type { User } from "./User";
 
 export type Priority = "low" | "medium" | "high";
@@ -14,4 +15,5 @@ export interface Task {
   filesCount: number;
   tags: string[];
   highlighted?: boolean;
+  attachments?: Attachment[];
 }

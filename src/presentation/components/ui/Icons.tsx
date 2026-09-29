@@ -191,6 +191,45 @@ export function LogoutIcon(props: IconProps) {
   );
 }
 
+export function SmileIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8.5 10.5h.01M15.5 10.5h.01" />
+      <path d="M8 14.5c1 1.3 2.4 2 4 2s3-.7 4-2" />
+    </Base>
+  );
+}
+
+export function LinkIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M9.5 14.5 14.5 9.5" />
+      <path d="M11 6.5 12.6 4.9a3.2 3.2 0 0 1 4.5 4.5L15.5 11" />
+      <path d="M13 17.5 11.4 19.1a3.2 3.2 0 0 1-4.5-4.5L8.5 13" />
+    </Base>
+  );
+}
+
+export function ImageIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <circle cx="9" cy="10" r="1.6" />
+      <path d="m4 17 5-5 4 4 3-3 4 4" />
+    </Base>
+  );
+}
+
+export function PencilIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17Z" />
+      <path d="m14.5 6.5 3 3" />
+    </Base>
+  );
+}
+
 export function MegaphoneIcon(props: IconProps) {
   return (
     <Base {...props}>
